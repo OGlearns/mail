@@ -5,14 +5,11 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelector('#sent').addEventListener('click', () => load_mailbox('sent'));
   document.querySelector('#archived').addEventListener('click', () => load_mailbox('archive'));
   document.querySelector('#compose').addEventListener('click', compose_email);
-  
-  // create invisible div for email view
-  
-  // create invisible div for email reply view
 
   // By default, load the inbox
   load_mailbox('inbox');  
 });
+
 
 function compose_email() {
   
@@ -73,8 +70,11 @@ function load_mailbox(mailbox) {
         // email_link.href=`emails/${results[email].id}`;
         email_link.appendChild(email_box);
         email_box.classList.add('col');
-        email_box.style.cssText = 'padding:5px;margin:auto;width:100%;height:40px;border:solid 0.5px;color:black;cursor:pointer;border-radius:4px;';
-        // email_box.onmouseover = function (){email_box.classList.add('email-box')};
+        email_box.style.cssText += 'padding:5px;margin:auto;width:100%;height:40px;border:solid 0.5px;color:black;cursor:pointer;';
+
+        // create hover effect for each email box
+        // email_box.classList.add('shadow-sm','rounded');
+        email_box.setAttribute('id', 'email-box');
 
         // populate the email div
         // add sender
@@ -93,10 +93,6 @@ function load_mailbox(mailbox) {
         date.style.cssText += 'float:right;';
         email_box.append(date);
 
-        //add bottom border on last email
-        // if (results.indexOf(email) === -1) {
-        //   email_box.style.cssText += 'border-bottom: solid 1px;';
-        // }
         // check if email is read. if yes, grey background
         if (results[email].read === true) {
           email_box.style.backgroundColor = '#f7f5f5';
@@ -135,18 +131,9 @@ function send_email() {
 
     // error with the email submission
     if (result['error'] !== undefined) {
-      // reload page
-
-      // fill form with submitted content
-      
-      // document.querySelector('#compose-recipients').value = recipient_list;
-      // document.querySelector('#compose-subject').value = subject;
-      // document.querySelector('#compose-body').value = body;
-
       display_status(result.error, 'error');
       // console.log(result.error);
     } else {
-
       display_status(result.message, 'success');
       delay(2500).then(() => load_mailbox('sent'));
     }
@@ -181,9 +168,8 @@ function display_status(message, status){
   delay(2500).then(() => error_box.remove());
 }
 
-
 // function to view email when clicked on
-function view_email(id, mailbox){
+function view_email(id){
   fetch(`emails/${id}`, {
     method: 'GET',
     email_id: id,
@@ -217,13 +203,13 @@ function view_email(id, mailbox){
   let recipient_p = document.createElement('p');
   let subject_p = document.createElement('p');
   let date_p = document.createElement('p');
-  let button = document.createElement('button');
+  let reply = document.createElement('button');
   let archive = document.createElement('button');
   let divider = document.createElement('hr');
   let body_p = document.createElement('p');
 
   // Style elements created
-  button.classList.add('btn', 'btn-sm', 'btn-outline-primary');
+  reply.classList.add('btn', 'btn-sm', 'btn-outline-primary');
   archive.classList.add('btn', 'btn-sm', 'btn-outline-primary');
   
   //Fill divs with email data
@@ -231,7 +217,7 @@ function view_email(id, mailbox){
   recipient_p.innerHTML = `<strong>To:</strong> ${recipients}`;
   subject_p.innerHTML = `<strong>Subject:</strong> ${subject}`;
   date_p.innerHTML = `<strong>Date:</strong> ${date}`;
-  button.innerHTML = 'Reply';
+  reply.innerHTML = 'Reply';
   body_p.innerHTML = `${body}`;
 
   // handle archive button logic 
@@ -243,14 +229,16 @@ function view_email(id, mailbox){
   const bool = results['archived']
   // Set on click attr to archive button
   archive.setAttribute('onclick', `archive(${results.id}, ${results.archived})`);
-  // console.log(results['archived']);
+  
+  // Set on click attr to reply button
+  reply.setAttribute('onclick', `reply(${results.id})`);
 
   // Fill email div with email content
   email_div.appendChild(sender_p);
   email_div.appendChild(recipient_p);
   email_div.appendChild(subject_p);
   email_div.appendChild(date_p);
-  email_div.appendChild(button);
+  email_div.appendChild(reply);
   email_div.appendChild(archive);
   email_div.appendChild(divider);
   email_div.appendChild(body_p);
@@ -278,9 +266,9 @@ function view_email(id, mailbox){
   })
 
 
-  // if mailbox is inbox, add button to archive the email if the email is unarchived
 }
 
+// Function to archive and unarchive
 function archive(id, bool) {
   if (bool === true){
     // update to unarchive the email
@@ -301,4 +289,38 @@ function archive(id, bool) {
   }
   // reload();
   load_mailbox('inbox');  
+}
+
+// Function to load and send reply
+function reply(id) {
+
+  // load the email compose view
+  compose_email();
+  // prefill in the content of the email id and some RE: content
+  fetch(`/emails/${id}`, {
+    method: 'GET',
+    email_id: id
+  })
+  .then(response => response.json())
+  .then(results => {
+    // Gather email details
+    let sender = results['sender'];
+    let subject = results['subject'];
+    let date = results['timestamp'];
+    let body = results['body'];
+    
+    // Fill content of compose view with email content
+    document.querySelector('#compose-recipients').value = sender;
+    spliced = subject.slice(0, 3);
+    console.log(spliced)
+    if (subject.slice(0,3) !== 'RE:'){
+      document.querySelector('#compose-subject').value = `RE: ${subject}`;
+    } else {
+      document.querySelector('#compose-subject').value = subject;
+    }
+    // Create divider between old email and new response
+    const splitter = '________________________________';
+    document.querySelector('#compose-body').value = `On ${date} ${sender} wrote:`+ '\r\n' +body + '\r\n' + splitter + '\r\n\r\n';
+
+  })
 }
